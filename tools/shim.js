@@ -16,7 +16,7 @@
         cb({docs:d.map(x=>{ const {id,...rest}=x; return {id,exists:true,data:()=>rest}; })}); });
     }catch(e){ console.warn("refresh failed",col,e); }
   }
-  setInterval(()=>Object.keys(subs).forEach(refresh),20000);
+  setInterval(()=>{ if(!document.hidden) Object.keys(subs).forEach(refresh); },60000);
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) Object.keys(subs).forEach(refresh); });
   function collection(col,order){
     return {

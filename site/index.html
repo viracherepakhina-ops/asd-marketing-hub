@@ -225,7 +225,46 @@ input,select,textarea{background:var(--surface);border-radius:10px}
 .kpi{padding-right:14px;margin-right:14px}.kpi b{font-size:20px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<script src="data.js"></script>
+<script>/* Tiny client for the site's /api — same shape the page code uses (collection/doc/onSnapshot). */
+(function(){
+  const KEY_STORE="asd-admin-key";
+  const adminKey=()=>{ try{ return localStorage.getItem(KEY_STORE)||""; }catch(e){ return ""; } };
+  async function call(method,path,body){
+    const h={"Content-Type":"application/json"}; const k=adminKey(); if(k) h["x-admin-key"]=k;
+    const r=await fetch("/api/"+path,{method,headers:h,body:body?JSON.stringify(body):undefined,cache:"no-store"});
+    if(!r.ok){ const e=new Error("HTTP "+r.status); e.code=r.status===401?"invalid_argument":"unavailable"; throw e; }
+    return r.json();
+  }
+  const subs={};  // col -> [{cb,order}]
+  async function refresh(col){
+    const list=subs[col]; if(!list||!list.length) return;
+    try{ const {docs}=await call("GET",col);
+      list.forEach(({cb,order})=>{ let d=docs.slice(); if(order){ const [f,dir]=order; d.sort((a,b)=>{ const x=a[f],y=b[f]; return (x>y?1:x<y?-1:0)*(dir==="desc"?-1:1); }); }
+        cb({docs:d.map(x=>{ const {id,...rest}=x; return {id,exists:true,data:()=>rest}; })}); });
+    }catch(e){ console.warn("refresh failed",col,e); }
+  }
+  setInterval(()=>Object.keys(subs).forEach(refresh),20000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) Object.keys(subs).forEach(refresh); });
+  function collection(col,order){
+    return {
+      orderBy:(f,dir)=>collection(col,[f,dir||"asc"]),
+      onSnapshot(cb){ (subs[col]=subs[col]||[]).push({cb,order}); refresh(col); return ()=>{ subs[col]=subs[col].filter(s=>s.cb!==cb); }; },
+      async add(body){ const r=await call("POST",col,body); refresh(col); return {id:r.id}; },
+      doc:(id)=>doc(col+"/"+id)
+    };
+  }
+  function doc(path){
+    const [col,id]=path.split("/");
+    return {
+      async set(b){ await call("PUT",col+"/"+encodeURIComponent(id),b); refresh(col); },
+      async update(b){ await call("PATCH",col+"/"+encodeURIComponent(id),b); refresh(col); },
+      async delete(){ await call("DELETE",col+"/"+encodeURIComponent(id)); refresh(col); }
+    };
+  }
+  window.HubDB={ collection, doc, adminKey, setAdminKey(k){ try{ k?localStorage.setItem(KEY_STORE,k):localStorage.removeItem(KEY_STORE); }catch(e){} },
+    async checkAdmin(){ if(!adminKey()) return false; try{ await call("GET","auth"); return true; }catch(e){ return false; } } };
+})();
+</script>
 </head><body>
 
 
@@ -235,6 +274,7 @@ input,select,textarea{background:var(--surface);border-radius:10px}
     <button data-v="events" aria-current="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Events</button>
     <button data-v="catalog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Materials</button>
     <button data-v="requests"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 11h7M9 15h7M9 7h4"/></svg>Requests <span class="badge" data-badge="req"></span></button>
+    <button data-v="admin" data-admin hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2.5"/></svg>Admin <span class="badge hot" data-badge="adm"></span></button>
   </nav>
   <button class="cartbtn" id="openCart"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 8H7"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg>Cart <b id="cartCount">0</b></button>
 </div></div></header>
@@ -255,7 +295,7 @@ input,select,textarea{background:var(--surface);border-radius:10px}
       <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="eq" type="search" placeholder="Search event, city or note" aria-label="Search events"></div>
       <div class="seg" id="ewhen"><button data-w="up" aria-pressed="true">Upcoming</button><button data-w="past" aria-pressed="false">Past</button><button data-w="all" aria-pressed="false">All</button></div>
       <select class="small" id="emgr" aria-label="Account manager"><option value="">All managers</option></select>
-      
+      <button class="btn primary" id="addEventBtn" data-admin hidden>Add event</button>
     </div>
     <div id="addEventBox" hidden></div>
     <p class="resultnote" id="eNote"></p>
@@ -286,12 +326,32 @@ input,select,textarea{background:var(--surface);border-radius:10px}
 
   <section id="v-requests" hidden>
     <p class="eyebrow">Material requests</p>
-    <h1>My requests</h1>
-    <p class="lede">Requests sent from this device, newest first. Marketing gets each one right away and ships it before the need-by date.</p>
-    <select class="small" id="mgrFilter" hidden><option value="">All</option></select><div style="height:14px"></div>
+    <h1>Requests</h1>
+    <p class="lede">Every request sent through the hub, newest first. Status changes to Sent with a tracking number once it ships.</p>
+    <div class="toolbar"><select class="small" id="mgrFilter"><option value="">All account managers</option></select></div>
     <div id="reqList"></div>
   </section>
 
+  <section id="v-admin" hidden>
+    <p class="eyebrow">Only you see this</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h1>Admin</h1><button class="btn" id="logoutBtn">Sign out of admin</button></div>
+    <div class="subtabs"><button class="chip" data-a="orders" aria-pressed="true">Orders</button><button class="chip" data-a="materials" aria-pressed="false">Materials</button></div>
+    <div id="a-orders">
+      <div class="stats"><div class="kpi"><p>Not sent</p><b id="sNot" style="color:var(--amber)">0</b></div><div class="kpi"><p>Sent</p><b id="sSent" style="color:var(--green)">0</b></div><div class="kpi"><p>Due in 7 days</p><b id="sDue" style="color:var(--red)">0</b></div></div>
+      <div class="tablewrap"><table class="plain"><thead><tr><th>Event</th><th>Manager</th><th>Needed by</th><th>Items</th><th>Status</th><th>Ship / tracking</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
+    </div>
+    <div id="a-materials" hidden>
+      <p class="note">Change stock or hide an item from the catalog, then press Save on that row. Stock goes down automatically when you mark an order Sent.</p>
+      <div class="tablewrap" id="matList"></div>
+      <form id="addMat" class="two" style="margin-top:16px;align-items:end">
+        <label>New material name<input id="nmName" required></label>
+        <label>Category<select id="nmCat"></select></label>
+        <label>SKU<input id="nmSku" required value="MRKTNG - "></label>
+        <label>In stock<input id="nmStock" type="number" min="0" value="0"></label>
+        <button class="btn primary" type="submit">Add material</button>
+      </form>
+    </div>
+  </section>
 </main>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections">
@@ -299,6 +359,7 @@ input,select,textarea{background:var(--surface);border-radius:10px}
   <button data-v="catalog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Materials</button>
   <button data-v="requests"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 11h7M9 15h7M9 7h4"/></svg>Requests<span class="badge" data-badge="req"></span></button>
   <button id="tabCart"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20.5 8H7"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg>Cart<span class="badge hot" data-badge="cart"></span></button>
+  <button data-v="admin" data-admin hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2.5"/></svg>Admin<span class="badge hot" data-badge="adm"></span></button>
 </nav>
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" hidden aria-label="Cart">
@@ -307,7 +368,7 @@ input,select,textarea{background:var(--surface);border-radius:10px}
   <form id="orderForm" style="margin-top:14px">
     <label>Event<select id="fEventSel" required></select></label>
     <label id="fEventOtherWrap" hidden>Event name<input id="fEvent" placeholder="e.g. Graybar Counter Day, Tulsa OK"></label>
-    <label>Account manager<select id="fMgr" required></select></label>
+    <label>Account manager<input id="fMgr" required list="mgrList" placeholder="Type or pick your name" autocomplete="name"></label>
     <label>Needed by<input id="fNeed" type="date" required></label>
     <label>Ship to<textarea id="fShip" required placeholder="Name, company, street, city, state, ZIP"></textarea></label>
     <label>Notes<textarea id="fNotes" placeholder="Anything marketing should know"></textarea></label>
@@ -319,6 +380,14 @@ input,select,textarea{background:var(--surface);border-radius:10px}
 <form name="material-request" data-netlify="true" netlify-honeypot="bot-field" hidden>
   <input name="bot-field"><input name="event"><input name="event_date"><input name="manager"><input name="needed_by"><textarea name="ship_to"></textarea><textarea name="notes"></textarea><textarea name="items"></textarea>
 </form>
+<div id="adminLogin" hidden style="position:fixed;inset:0;z-index:45;background:rgba(16,18,22,.25);display:grid;place-items:center;padding:24px">
+  <form id="adminLoginForm" style="width:min(360px,100%);display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px">
+    <h2>Admin sign in</h2>
+    <label>Admin password<input id="adminKey" type="password" autocomplete="current-password"></label>
+    <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Sign in</button><button class="btn" type="button" id="adminCancel">Cancel</button></div>
+    <p class="note" id="adminNote" style="margin:0"></p>
+  </form>
+</div>
 <div id="gate" style="position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:24px">
   <form id="gateForm" style="width:min(360px,100%);display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px">
     <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><div>ASD Marketing Hub<small>Events and marketing materials</small></div></div>
@@ -343,7 +412,7 @@ const CATS = ["Print & Brochures","Promo & Office","Apparel","Display & Booth"];
 const FORMATS = ["Open House / Customer Appreciation","Golf Outing","Grand Opening","Trade Show","Holiday Lunch","Other"];
 const APPROVALS = ["Approved","Pending","Rejected"];
 const PAYMENTS = ["Not started","Payment in progress","Paid","Cancelled"];
-const MANAGERS = ["Thomas Egbers","Morgan Pixley","Mary Benton","Arthur \"Buzz\" Carruth","Steve Merrick","David Sarver","Valerii Mashkovtsev","Nonna Airapetova","Chris Morton","Gary","Edward","Val","Other"];
+const MANAGERS = ["Thomas Egbers","Morgan Pixley","Mary Benton","Arthur \"Buzz\" Carruth","Steve Merrick","David Sarver","Valerii Mashkovtsev","Nonna Airapetova","Chris Morton","Gary","Edward","Val"];
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let db=null, user=null, assets=null, isOwner=false;
@@ -370,7 +439,7 @@ setHH(); addEventListener("resize",setHH);
 document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>show(b.dataset.v));
 function show(v){ if(v==="admin"&&!isOwner) v="events";
   document.querySelectorAll("[data-v]").forEach(b=>b.setAttribute("aria-current", b.dataset.v===v));
-  ["events","catalog","requests"].forEach(x=>$("#v-"+x).hidden = x!==v);
+  ["events","catalog","requests","admin"].forEach(x=>$("#v-"+x).hidden = x!==v);
   try{ if(location.hash!=="#"+v) history.replaceState(null,"","#"+v); }catch(e){} scrollTo({top:0}); }
 document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-a]").forEach(x=>x.setAttribute("aria-pressed", x===b)); $("#a-orders").hidden=b.dataset.a!=="orders"; $("#a-materials").hidden=b.dataset.a!=="materials"; });
 $("#lb").onclick=()=>{ $("#lb").hidden=true; };
@@ -400,7 +469,7 @@ function renderEvents(){
   $("#eNote").textContent = events.length ? `Showing ${list.length} of ${events.length} events` : "";
   $("#fLabel").textContent = `Total for ${list.length} event${list.length===1?"":"s"} shown`;
   $("#fTotal").textContent = money(list.reduce((s,e)=>s+(Number(e.total)||0),0));
-  if(!list.length){ $("#eBody").innerHTML=`<tr><td class="rn"></td><td colspan="8" class="note" style="padding:24px;text-align:center">${events.length?"No events match these filters.":("No events yet.")}</td></tr>`; return; }
+  if(!list.length){ $("#eBody").innerHTML=`<tr><td class="rn"></td><td colspan="8" class="note" style="padding:24px;text-align:center">${events.length?"No events match these filters.":(db?"No events yet.":"Loading events…")}</td></tr>`; return; }
   $("#eBody").innerHTML = list.map((e,i)=>{ const ms=matStatus(e), past=e.date && e.date<t, open=openEv===e.id;
     const row=`<tr class="er ${past?"past":""} ${open?"open":""}" data-ev="${esc(e.id)}" tabindex="0"><td class="rn">${i+1}</td>
       <td class="date">${fmt(e.date)}</td><td class="nm">${esc(e.name)}${e.notes?`<small>${esc(e.notes)}</small>`:""}</td><td>${esc(e.format)}</td>
@@ -420,7 +489,7 @@ function detailHtml(e){
     : `<p class="note" style="margin:0 0 10px">No materials requested for this event yet.</p>`;
   const editing = isOwner && editEv===e.id;
   return `<div class="dgrid"><div><h3>Materials for this event</h3>${ordHtml}<button class="btn primary" data-reqfor="${esc(e.id)}">Request materials for this event</button></div>
-    <div><h3>Event details</h3>${false?"":`<div class="ordcard"><div><b>${esc(e.name)}</b></div><div class="note">${esc(e.format)} · ${fmt(e.date)}</div>${e.notes?`<p style="margin:8px 0 0">${esc(e.notes)}</p>`:""}</div>`}</div></div>`;
+    <div><h3>Event details</h3>${editing?eventForm(e):`<div class="ordcard"><div><b>${esc(e.name)}</b></div><div class="note">${esc(e.format)} · ${fmt(e.date)}</div>${e.notes?`<p style="margin:8px 0 0">${esc(e.notes)}</p>`:""}</div>${isOwner?`<button class="btn" data-editev="${esc(e.id)}">Edit event</button>`:""}`}</div></div>`;
 }
 function opts(list,v){ const l=v&&!list.includes(v)?[v,...list]:list; return l.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join(""); }
 function eventForm(e){ e=e||{}; const id=e.id||"new";
@@ -451,7 +520,7 @@ function wireDetail(root){
         renderEvents();
       }catch(e){ toast("Could not save. Try again."); } }); });
 }
-window._unused=()=>{ const box=$("#addEventBox"); box.hidden=!box.hidden; box.innerHTML = box.hidden?"":`<div class="ordcard" style="margin:8px 0 12px"><h2 style="margin-bottom:10px">New event</h2>${eventForm(null)}</div>`; wireDetail(box); };
+$("#addEventBtn").onclick=()=>{ const box=$("#addEventBox"); box.hidden=!box.hidden; box.innerHTML = box.hidden?"":`<div class="ordcard" style="margin:8px 0 12px"><h2 style="margin-bottom:10px">New event</h2>${eventForm(null)}</div>`; wireDetail(box); };
 document.body.insertAdjacentHTML("beforeend", `<datalist id="mgrList">${MANAGERS.map(m=>`<option value="${esc(m)}">`).join("")}</datalist>`);
 
 /* catalog */
@@ -469,7 +538,7 @@ function renderFilters(){
 function renderGrid(){
   const list=materials.filter(m=>matches(m)&&(cat==="All"||m.category===cat));
   $("#resultNote").textContent = materials.length&&(q||inStockOnly||cat!=="All") ? `Showing ${list.length} of ${materials.filter(m=>m.active!==false).length} materials` : "";
-  if(!materials.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">${"No materials yet."}</div>`; return; }
+  if(!materials.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">${db?"No materials yet.":"Loading the catalog…"}</div>`; return; }
   if(!list.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">Nothing matches${q?` “${esc(q)}”`:""}. Try another word or choose All.</div>`; return; }
   $("#grid").innerHTML = list.map(m=>{ const p=photoOf(m), n=Number(m.inStock)||0, inCart=cart[m.id]||0;
     return `<article class="card">${p?`<button class="ph" data-zoom="${esc(m.id)}" aria-label="Enlarge photo of ${esc(m.name)}"><img src="${esc(p)}" alt="${esc(m.name)}" loading="lazy"><span class="zoom">Enlarge</span></button>`:`<div class="ph" style="cursor:default"><span>ASD</span></div>`}
@@ -505,38 +574,37 @@ function fillEventSelect(){
     if(!$("#fNeed").value && ev.date){ const [y,m,d]=ev.date.split("-").map(Number); const nb=new Date(y,m-1,d-7); $("#fNeed").value=`${nb.getFullYear()}-${String(nb.getMonth()+1).padStart(2,"0")}-${String(nb.getDate()).padStart(2,"0")}`; } }
 }
 $("#fEventSel").onchange=()=>{ pickedEvent=$("#fEventSel").value==="__other"?"":$("#fEventSel").value; $("#fNeed").value=""; renderBanner(); fillEventSelect(); };
-$("#fMgr").innerHTML = `<option value="">Choose your name</option>` + MANAGERS.map(m=>`<option>${esc(m)}</option>`).join("");
-$("#mgrFilter").innerHTML += MANAGERS.map(m=>`<option>${esc(m)}</option>`).join("");
+
+
 try{ const lm=localStorage.getItem("asd-mgr"); if(lm) $("#fMgr").value=lm; }catch(e){}
 $("#orderForm").addEventListener("submit", async e=>{ e.preventDefault();
   if(!Object.keys(cart).length){ $("#formNote").textContent="Add at least one material first."; return; }
+  if(!db){ $("#formNote").textContent="The hub can't save requests in this view. Open it from your claude.ai link while signed in."; return; }
   const sv=$("#fEventSel").value, ev=events.find(x=>x.id===sv), other=$("#fEvent").value.trim();
   if(sv==="__other" && !other){ $("#formNote").textContent="Type the event name."; return; }
   const items=Object.entries(cart).map(([id,qty])=>{ const m=materials.find(x=>x.id===id)||{}; return {id,name:m.name||id,sku:m.sku||"",qty}; });
   const body={ eventId:ev?ev.id:"", event:ev?ev.name:other, eventDate:ev?ev.date:"", manager:$("#fMgr").value, neededBy:$("#fNeed").value,
     shipTo:$("#fShip").value.trim(), notes:$("#fNotes").value.trim(), items, status:"Not sent", sentDate:"", tracking:"", createdAt:new Date().toISOString() };
   $("#sendBtn").disabled=true;
-  try{ const fd=new URLSearchParams({"form-name":"material-request","bot-field":"",event:body.event,event_date:body.eventDate,manager:body.manager,needed_by:body.neededBy,ship_to:body.shipTo,notes:body.notes,
-      items:items.map(i=>`${i.qty} x ${i.name} (${i.sku})`).join("\n")});
-    const r=await fetch("/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:fd.toString()});
-    if(!r.ok) throw new Error("http "+r.status);
-    orders=[{id:"o"+Date.now(),...body},...orders]; try{ localStorage.setItem("asd-orders",JSON.stringify(orders)); localStorage.setItem("asd-mgr",body.manager); }catch(e){}
-    renderRequests(); renderEvents();
+  try{ await db.collection("orders").add(body); try{ localStorage.setItem("asd-mgr",body.manager); }catch(e){}
+    try{ fetch("/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({"form-name":"material-request","bot-field":"",event:body.event,event_date:body.eventDate,manager:body.manager,needed_by:body.neededBy,ship_to:body.shipTo,notes:body.notes,items:items.map(i=>`${i.qty} x ${i.name} (${i.sku})`).join("\n")}).toString()}); }catch(e){}
     cart={}; saveCart(); pickedEvent=""; $("#orderForm").reset(); $("#fMgr").value=body.manager; $("#formNote").textContent="";
     renderCart(); renderGrid(); renderBanner(); openCart(false); show("requests"); toast("Request sent to marketing");
-  }catch(err){ $("#formNote").textContent = false ? "" : "The request was not sent. Check your connection and try again."; }
+  }catch(err){ $("#formNote").textContent = false ? "" : "The request was not saved. Check your connection and try again."; }
   finally{ $("#sendBtn").disabled=false; } });
 
 /* requests */
 $("#mgrFilter").onchange=renderRequests;
+function mgrOptions(){ const names=[...new Set([...MANAGERS,...orders.map(o=>o.manager).filter(Boolean)])].sort(); const cur=$("#mgrFilter").value; $("#mgrFilter").innerHTML=`<option value="">All account managers</option>`+names.map(m=>`<option>${esc(m)}</option>`).join(""); $("#mgrFilter").value=cur; }
 function itemsHtml(o){ return `<ul class="items">${(o.items||[]).map(i=>`<li><b>${Number(i.qty)||0}</b> × ${esc(i.name)}</li>`).join("")}</ul>`; }
 function renderRequests(){
-  badge("req",orders.length); 
+  mgrOptions();
+  badge("req",orders.length); badge("adm",orders.filter(o=>o.status!=="Sent").length);
   const f=$("#mgrFilter").value, list=orders.filter(o=>!f||o.manager===f);
   if(!list.length){ $("#reqList").innerHTML=`<div class="empty">No requests yet. Requests sent from the cart show up here with their status.</div>`; return; }
-  $("#reqList").innerHTML=`<div class="tablewrap"><table class="plain"><thead><tr><th>Event</th><th>Manager</th><th>Needed by</th><th>Items</th><th>Status</th><th></th></tr></thead><tbody>${
+  $("#reqList").innerHTML=`<div class="tablewrap"><table class="plain"><thead><tr><th>Event</th><th>Manager</th><th>Needed by</th><th>Items</th><th>Status</th><th>Tracking</th></tr></thead><tbody>${
     list.map(o=>`<tr><td><b>${esc(o.event)}</b>${o.eventDate?`<div class="note">Event ${fmt(o.eventDate)}</div>`:""}</td><td>${esc(o.manager)}</td><td>${fmt(o.neededBy)}</td><td>${itemsHtml(o)}</td>
-    <td><span class="pill not">Sent to marketing</span></td><td></td></tr>`).join("")}</tbody></table></div>`;
+    <td><span class="pill ${o.status==="Sent"?"sent":"not"}">${esc(o.status)}</span>${o.sentDate?`<div class="note">${fmt(o.sentDate)}</div>`:""}</td><td class="sku">${esc(o.tracking)||"—"}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 /* admin */
@@ -552,13 +620,16 @@ function renderAdmin(){
     <td><span class="pill ${o.status==="Sent"?"sent":"not"}">${esc(o.status)}</span></td>
     <td><div class="note" style="white-space:pre-line;margin-bottom:6px">${esc(o.shipTo)}</div>${o.status==="Sent"
       ?`<div class="sku">${fmt(o.sentDate)} · ${esc(o.tracking)||"no tracking"}</div><button class="btn" data-unsend="${esc(o.id)}" style="margin-top:6px">Set Not sent</button>`
-      :`<div style="display:flex;gap:6px;flex-wrap:wrap"><input id="tr-${esc(o.id)}" placeholder="Tracking #" style="max-width:170px"><button class="btn primary" data-send="${esc(o.id)}">Mark Sent</button></div>`}</td></tr>`; }).join("")
+      :`<div style="display:flex;gap:6px;flex-wrap:wrap"><input id="tr-${esc(o.id)}" placeholder="Tracking #" style="max-width:170px"><button class="btn primary" data-send="${esc(o.id)}">Mark Sent</button></div>`}
+      <button class="btn danger" data-delorder="${esc(o.id)}" style="margin-top:6px">Delete</button></td></tr>`; }).join("")
     : `<tr><td colspan="6" class="note" style="text-align:center;padding:24px">No requests yet.</td></tr>`;
   $("#ordersBody").querySelectorAll("[data-send]").forEach(b=>b.onclick=()=>setSent(b.dataset.send,true));
   $("#ordersBody").querySelectorAll("[data-unsend]").forEach(b=>b.onclick=()=>setSent(b.dataset.unsend,false));
+  $("#ordersBody").querySelectorAll("[data-delorder]").forEach(b=>b.onclick=async()=>{ if(b.dataset.sure!=="1"){ b.dataset.sure="1"; b.textContent="Click again to delete"; return; }
+    try{ b.blur(); await db.doc("orders/"+b.dataset.delorder).delete(); toast("Request deleted"); }catch(e){ toast("Could not delete. Try again."); } });
 }
-async function setSent(id,sent){ const o=orders.find(x=>x.id===id); if(!o) return;
-  try{ const tracking=sent?($("#tr-"+CSS.escape(id)).value||"").trim():"";
+async function setSent(id,sent){ const o=orders.find(x=>x.id===id); if(!o) return; const tv=sent?($("#tr-"+CSS.escape(id)).value||"").trim():""; document.activeElement&&document.activeElement.blur();
+  try{ const tracking=tv;
     await db.doc("orders/"+id).update({status:sent?"Sent":"Not sent",sentDate:sent?today():"",tracking});
     for(const it of o.items||[]){ const m=materials.find(x=>x.id===it.id); if(!m) continue;
       await db.doc("materials/"+m.id).update({inStock:Math.max(0,(Number(m.inStock)||0)+(sent?-1:1)*(Number(it.qty)||0))}); }
@@ -575,18 +646,30 @@ function renderMatAdmin(){ const box=$("#matList"); if(box.contains(document.act
   box.querySelectorAll("[data-photo]").forEach(i=>i.onchange=async()=>{ const f=i.files[0]; if(!f) return;
     try{ toast("Uploading photo…"); const a=await assets.upload(f); await db.doc("materials/"+i.dataset.photo).update({photo:a.url}); toast("Photo updated"); }catch(e){ toast("Photo upload failed. Try a smaller JPG or PNG."); } });
 }
-if($("#nmCat"))$("#nmCat").innerHTML=CATS.map(c=>`<option>${esc(c)}</option>`).join("");
-$("#addMat")&&$("#addMat").addEventListener("submit",async e=>{ e.preventDefault(); if(!db) return;
+$("#nmCat").innerHTML=CATS.map(c=>`<option>${esc(c)}</option>`).join("");
+$("#addMat").addEventListener("submit",async e=>{ e.preventDefault(); if(!db) return;
   const sku=$("#nmSku").value.trim(), id=sku.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||("m"+Date.now());
   try{ await db.doc("materials/"+id).set({name:$("#nmName").value.trim(),category:$("#nmCat").value,sku,inStock:Math.max(0,parseInt($("#nmStock").value,10)||0),active:true,sort:materials.length+1});
     $("#addMat").reset(); $("#nmSku").value="MRKTNG - "; toast("Material added"); }catch(err){ toast("Could not add. Try again."); } });
 
 /* boot */
 renderEvents(); renderFilters(); renderGrid(); renderCart(); renderRequests();
-events=(window.EVENTS||[]); materials=(window.MATERIALS||[]);
-try{ orders=JSON.parse(localStorage.getItem("asd-orders")||"[]")||[]; }catch(e){ orders=[]; }
-renderEvents(); renderFilters(); renderGrid(); renderCart(); renderRequests();
-{ const h=(location.hash||"").slice(1); if(["events","catalog","requests"].includes(h)) show(h); }
+(async()=>{
+  db=window.HubDB; assets=null;
+  isOwner=await HubDB.checkAdmin();
+  document.querySelectorAll("[data-admin]").forEach(b=>b.hidden=!isOwner);
+  const h=(location.hash||"").slice(1);
+  if(h==="admin" && !isOwner) $("#adminLogin").hidden=false;
+  if(["events","catalog","requests","admin"].includes(h)) show(h);
+  db.collection("events").onSnapshot(s=>{ events=s.docs.map(x=>({id:x.id,...x.data()})); if(!editEv) renderEvents(); renderBanner(); });
+  db.collection("materials").orderBy("sort").onSnapshot(s=>{ materials=s.docs.map(x=>({id:x.id,...x.data()})); renderFilters(); renderGrid(); renderCart(); renderAdmin(); });
+  db.collection("orders").orderBy("createdAt","desc").onSnapshot(s=>{ orders=s.docs.map(x=>({id:x.id,...x.data()})); renderRequests(); renderAdmin(); if(!editEv) renderEvents(); });
+})();
+addEventListener("hashchange",()=>{ const h=(location.hash||"").slice(1); if(h==="admin"&&!isOwner) $("#adminLogin").hidden=false; else if(["events","catalog","requests","admin"].includes(h)) show(h); });
+$("#logoutBtn").onclick=()=>{ HubDB.setAdminKey(""); location.hash="#events"; location.reload(); };
+$("#adminLoginForm").addEventListener("submit",async e=>{ e.preventDefault(); HubDB.setAdminKey($("#adminKey").value.trim());
+  if(await HubDB.checkAdmin()){ location.hash="#admin"; location.reload(); } else { HubDB.setAdminKey(""); $("#adminNote").textContent="Wrong admin password."; } });
+$("#adminCancel").onclick=()=>{ $("#adminLogin").hidden=true; show("events"); };
 </script>
 
 </body></html>

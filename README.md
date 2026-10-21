@@ -7,3 +7,5 @@ Live: https://asd-marketing-hub.netlify.app (access code required).
 - Material requests go to Netlify Forms (form name `material-request`).
 - To change data: edit `tools/site-data.json`, then run `cd tools && python3 build.py`.
 - To change design or behavior: edit `tools/template.html`, then run the same build.
+
+Published automatically by Netlify from the `main` branch.

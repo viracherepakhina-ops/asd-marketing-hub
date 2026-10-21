@@ -1,0 +1,591 @@
+<title>ASD Marketing Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky ink header with tabs; Events as a spreadsheet grid with expandable rows; catalog grid + cart drawer; owner-only admin. */
+/* Light, monochrome: white surfaces, ink text, black primary actions; color only as small status dots. */
+:root{
+  --bg:#fafafa; --surface:#ffffff; --fg:#121417; --muted:#6c717a; --line:#ebecef; --grid:#f1f2f4; --head:#fafafa;
+  --accent:#121417; --accent-soft:#f4f5f6; --ink:#ffffff;
+  --green:#1f8a47; --green-soft:#f4f5f6; --red:#d23a2f; --red-soft:#fdf1f0; --amber:#c27c0e; --amber-soft:#f4f5f6;
+  --brand-r:#d9302c; --brand-g:#1f8a3b; --brand-b:#1f5fbf; --brand-y:#e2a50b;
+  --display:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--ink);color:#fff}
+.bar{display:flex;align-items:center;gap:16px;padding-block:10px}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:.01em;white-space:nowrap}
+.mark{display:grid;grid-template-columns:repeat(2,9px);gap:2px}
+.mark i{width:9px;height:9px;border-radius:2px;display:block}
+.mark i:nth-child(1){background:var(--brand-r)}.mark i:nth-child(2){background:var(--brand-g)}.mark i:nth-child(3){background:var(--brand-b)}.mark i:nth-child(4){background:var(--brand-y)}
+.logo small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:#aab3c8;letter-spacing:0}
+nav{display:flex;gap:2px;margin-left:auto}
+nav button,.tabbar button{font:600 14px var(--body);background:none;border:0;color:#c3cadb;padding:8px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px}
+nav button:hover{background:rgba(255,255,255,.08);color:#fff}
+nav button[aria-current="true"]{background:rgba(255,255,255,.14);color:#fff}
+nav svg,.tabbar svg,.cartbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.badge{min-width:20px;height:20px;padding:0 6px;border-radius:10px;font-size:12px;font-weight:700;display:inline-grid;place-items:center;background:rgba(255,255,255,.18);color:inherit;font-variant-numeric:tabular-nums}
+.badge.hot{background:var(--brand-r);color:#fff}
+.badge:empty{display:none}
+.cartbtn{font:600 14px var(--body);background:#fff;color:#16203a;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.cartbtn b{background:#16203a;color:#fff;border-radius:10px;padding:0 7px;font-variant-numeric:tabular-nums}
+.stripe{display:flex;height:4px}.stripe i{flex:1}
+.stripe i:nth-child(1){background:var(--brand-r)}.stripe i:nth-child(2){background:var(--brand-g)}.stripe i:nth-child(3){background:var(--brand-b)}.stripe i:nth-child(4){background:var(--brand-y)}
+main{padding-block:22px 64px}
+h1,h2{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:32px;line-height:1.05}h2{font-size:22px}
+.lede{color:var(--muted);margin:6px 0 0;max-width:68ch}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--accent);margin:0 0 6px}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:18px 0}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.kpi p{margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.kpi b{display:block;font-family:var(--display);font-size:28px;line-height:1.15;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi small{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hh,60px));z-index:4;background:var(--bg);padding-block:10px;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:1px solid var(--line)}
+.search{position:relative;flex:1 1 260px;max-width:440px}
+.search input{padding-left:38px;background:var(--surface);height:40px}
+.search svg{position:absolute;left:12px;top:11px;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px}
+.seg button{font:600 13px var(--body);border:0;background:none;color:var(--muted);padding:6px 11px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;width:100%}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:600 13px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;flex:none}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.chip em{font-style:normal;opacity:.65;margin-left:4px;font-variant-numeric:tabular-nums}
+.toggle{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;flex:none;cursor:pointer}
+.toggle input{width:auto}
+select.small{width:auto;height:40px;background:var(--surface)}
+.resultnote{font-size:13px;color:var(--muted);margin:4px 0 12px}
+.sheet{overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 260px)}
+.sheet table{border-collapse:separate;border-spacing:0;width:100%;min-width:1080px;font-size:14px}
+.sheet th{position:sticky;top:0;z-index:2;background:var(--head);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;padding:9px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--grid);white-space:nowrap;cursor:pointer;user-select:none}
+.sheet th:hover{color:var(--fg)}
+.sheet th .ar{opacity:.5;margin-left:3px}
+.sheet th.rn,.sheet td.rn{width:40px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;background:var(--head);cursor:default;position:sticky;left:0;z-index:1}
+.sheet th.rn{z-index:3}
+.sheet td{padding:8px 10px;border-bottom:1px solid var(--grid);border-right:1px solid var(--grid);vertical-align:top}
+.sheet tbody tr.er{cursor:pointer}
+.sheet tbody tr.er:hover td:not(.rn){background:var(--accent-soft)}
+.sheet tr.past td:not(.rn){color:var(--muted)}
+.sheet tr.open td:not(.rn){background:var(--accent-soft)}
+.sheet td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sheet td.date{font-family:var(--mono);white-space:nowrap;font-size:13px}
+.sheet td.nm{font-weight:600;min-width:280px}
+.sheet td.nm small{display:block;font-weight:400;color:var(--muted)}
+.sheet tfoot td{position:sticky;bottom:0;background:var(--head);font-weight:700;border-top:1px solid var(--line)}
+.detail td{background:var(--bg)!important;padding:14px 16px}
+.detail td.rn{background:var(--head)!important}
+.dgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+.dgrid h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ordcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.ordcard ul{margin:6px 0 0;padding-left:18px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.pill.sent,.pill.approved,.pill.paid{background:var(--green-soft);color:var(--green)}
+.pill.not,.pill.pending,.pill.progress{background:var(--amber-soft);color:var(--amber)}
+.pill.rejected,.pill.cancelled{background:var(--red-soft);color:var(--red)}
+.pill.none{background:var(--grid);color:var(--muted)}
+.edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.edit .full{grid-column:1/-1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(20,30,60,.12)}
+.ph{aspect-ratio:1/1;background:radial-gradient(circle at 50% 40%,var(--surface),var(--bg) 75%);display:grid;place-items:center;overflow:hidden;max-width:100%;padding:14px;border:0;width:100%;cursor:zoom-in;position:relative}
+.ph img{width:100%;height:100%;object-fit:contain;border-radius:6px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.14))}
+.ph>span:not(.zoom){font-family:var(--display);font-size:40px;color:var(--muted);opacity:.5}
+.ph .zoom{position:absolute;right:10px;bottom:10px;font:600 12px var(--body);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:3px 9px;opacity:0;transition:opacity .15s}
+.card:hover .zoom,.ph:focus-visible .zoom{opacity:1}
+.cb{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1;border-top:1px solid var(--line)}
+.cat{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.nm2{font-weight:700;font-size:16px;line-height:1.25}
+.sku{font-family:var(--mono);font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.row{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:auto;padding-top:8px}
+.stock{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;padding:2px 8px;border-radius:4px}
+.ok{background:var(--green-soft);color:var(--green)}.low{background:var(--amber-soft);color:var(--amber)}.out{background:var(--red-soft);color:var(--red)}
+.qty{display:flex;align-items:center;gap:6px}
+.qty input{width:56px;font-weight:600;text-align:center;padding:6px}
+.btn{font:600 14px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.danger{color:var(--red)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,tr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.evbanner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:6px;font-weight:600}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--surface);border-left:1px solid var(--line);z-index:20;display:flex;flex-direction:column;padding:calc(16px + env(safe-area-inset-top,0px)) max(18px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) 18px;box-shadow:-8px 0 30px rgba(0,0,0,.14);overflow-y:auto}
+.scrim{position:fixed;inset:0;background:rgba(10,14,25,.35);z-index:15}
+.dhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.line{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.line img,.line .ni{width:44px;height:44px;border-radius:4px;object-fit:contain;background:var(--bg);flex:none}
+.line .t{flex:1;min-width:0;font-weight:600;font-size:14px}
+form{display:grid;gap:10px}
+label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+input,select,textarea{font:400 15px var(--body);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
+textarea{min-height:64px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{font-size:13px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;font-weight:600;max-width:calc(100% - 32px)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.plain{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
+.plain th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);background:var(--head)}
+.plain td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.plain tr.urgent td{background:var(--red-soft)}
+.items{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted)}
+.mrow{display:grid;grid-template-columns:64px minmax(0,2fr) minmax(0,1.4fr) 90px auto auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.mrow img,.mrow .ni{width:64px;height:48px;object-fit:contain;border-radius:4px;background:var(--bg)}
+.upl{font-size:12px;color:var(--accent);cursor:pointer;font-weight:600}
+.subtabs{display:flex;gap:6px;margin:18px 0 12px}
+.lb{position:fixed;inset:0;z-index:40;background:rgba(8,10,18,.84);display:grid;place-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));cursor:zoom-out}
+.lb figure{margin:0;display:grid;gap:12px;justify-items:center;max-width:100%}
+.lb img{max-height:78vh;max-width:min(92vw,720px);width:auto;border-radius:10px;background:#fff}
+.lb figcaption{color:#fff;text-align:center;font-weight:600}.lb figcaption small{display:block;font-family:var(--mono);font-weight:400;opacity:.75}
+.tabbar{display:none}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:last-child{grid-column:1/-1}.dgrid{grid-template-columns:1fr}}
+@media (max-width:720px){header nav,.cartbtn{display:none!important}
+.tabbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--ink);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.tabbar button{flex-direction:column;gap:2px;font-size:11px;padding:6px 4px;position:relative}
+.tabbar button[aria-current="true"]{color:#fff;background:rgba(255,255,255,.12)}
+.tabbar .badge{position:absolute;top:0;left:calc(50% + 6px);min-width:18px;height:18px;font-size:11px}
+main{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+h1{font-size:26px}.two,.edit{grid-template-columns:1fr}
+.mrow{grid-template-columns:56px minmax(0,1fr) 80px}.mrow .hide-s{display:none}
+.sheet{max-height:none}}
+/* light minimal overrides */
+body{font-size:14.5px;letter-spacing:-.003em}
+header{background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(10px);color:var(--fg);border-bottom:1px solid var(--line)}
+.bar{padding-block:12px}
+.logo{font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.01em}
+.logo small{color:var(--muted)}
+.mark{grid-template-columns:repeat(2,7px)}.mark i{width:7px;height:7px;border-radius:50%}
+nav button,.tabbar button{color:var(--muted);font-weight:500}
+nav button:hover{background:var(--accent-soft);color:var(--fg)}
+nav button[aria-current="true"]{background:var(--accent-soft);color:var(--fg);font-weight:600}
+.badge{background:var(--grid);color:var(--fg)}
+.cartbtn{background:var(--fg);color:#fff;font-weight:600;border-radius:999px;padding:8px 16px}
+.cartbtn b{background:rgba(255,255,255,.18);color:#fff}
+.eyebrow{display:none}
+h1,h2{font-family:var(--display);font-weight:600;letter-spacing:-.02em}
+h1{font-size:30px}
+main{padding-block:32px 64px}
+.kpis{display:flex;flex-wrap:wrap;gap:0;margin:22px 0 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.kpi{background:none;border:0;border-radius:0;padding:14px 22px 14px 0;margin-right:22px;border-right:1px solid var(--line);min-width:0}
+.kpi:last-child{border-right:0;flex:1}
+.kpi p{font-size:11px;letter-spacing:.06em;font-weight:500}
+.kpi b{font-family:var(--display);font-size:24px;font-weight:600;letter-spacing:-.02em}
+.toolbar{background:rgba(250,250,250,.95);border-bottom:0}
+.search input,select.small{background:var(--surface);border-radius:999px;height:38px}
+input,select,textarea{background:var(--surface);border-radius:10px}
+.seg{border-radius:999px}.seg button{border-radius:999px}
+.seg button[aria-pressed="true"],.chip[aria-pressed="true"]{background:var(--fg);color:#fff;border-color:var(--fg)}
+.chip{font-weight:500}
+.btn{border-radius:999px;font-weight:500}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:#fff}
+.btn.primary:hover{background:#2b2f35}
+.sheet{border-radius:14px;box-shadow:0 1px 2px rgba(16,18,22,.04)}
+.sheet th{background:var(--surface);font-weight:500;letter-spacing:.05em}
+.sheet th.rn,.sheet td.rn{background:var(--surface);color:#b0b4bb}
+.sheet td{border-right:0}
+.sheet tfoot td{background:var(--surface)}
+.detail td{background:var(--head)!important}.detail td.rn{background:var(--surface)!important}
+.pill,.pill.sent,.pill.approved,.pill.paid,.pill.not,.pill.pending,.pill.progress,.pill.rejected,.pill.cancelled,.pill.none{background:none;color:var(--fg);font-weight:500;padding:0;border-radius:0;display:inline-flex;align-items:center;gap:6px}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:#c3c7cd;flex:none}
+.pill.sent::before,.pill.approved::before,.pill.paid::before{background:var(--green)}
+.pill.not::before,.pill.pending::before,.pill.progress::before{background:var(--amber)}
+.pill.rejected::before,.pill.cancelled::before{background:var(--red)}
+.pill.none{color:var(--muted)}
+.stock,.stock.ok,.stock.low,.stock.out{background:none;padding:0;font-weight:500;display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.stock::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green)}
+.stock.low::before{background:var(--amber)}.stock.out::before{background:var(--red)}.stock.out{color:var(--red)}
+.card{border-radius:16px;border-color:var(--line)}
+.card:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(16,18,22,.08)}
+.ph{background:#f5f5f6}
+.ph img{filter:none;border-radius:8px}
+.cb{border-top:0;padding-top:12px}
+.cat{font-weight:500;letter-spacing:.06em}
+.nm2{font-weight:600;letter-spacing:-.01em}
+.evbanner{background:var(--surface);border-radius:999px;font-weight:500}
+.ordcard,.tablewrap,.empty{border-radius:14px}
+.plain th{background:var(--surface);font-weight:500}
+.plain tr.urgent td{background:var(--red-soft)}
+.toast{border-radius:999px}
+.drawer{box-shadow:-12px 0 40px rgba(16,18,22,.08)}
+.scrim{background:rgba(16,18,22,.18)}
+@media (max-width:720px){.tabbar{background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px)}
+.tabbar button[aria-current="true"]{color:var(--fg);background:var(--accent-soft)}
+.kpi{padding-right:14px;margin-right:14px}.kpi b{font-size:20px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header><div class="wrap bar">
+  <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><div>ASD Marketing Hub<small>Events and marketing materials</small></div></div>
+  <nav id="nav">
+    <button data-v="events" aria-current="true">/*I_EV*/Events</button>
+    <button data-v="catalog">/*I_CAT*/Materials</button>
+    <button data-v="requests">/*I_REQ*/Requests <span class="badge" data-badge="req"></span></button>
+    <button data-v="admin" data-admin hidden>/*I_ADM*/Admin <span class="badge hot" data-badge="adm"></span></button>
+  </nav>
+  <button class="cartbtn" id="openCart">/*I_CART*/Cart <b id="cartCount">0</b></button>
+</div></div></header>
+
+<main class="wrap">
+  <section id="v-events">
+    <p class="eyebrow">2026 event calendar</p>
+    <h1>Events</h1>
+    <p class="lede">Every event on the calendar with its approval, payment and budget. Click a row to see the materials requested for it, or to request materials for that event.</p>
+    <div class="kpis">
+      <div class="kpi"><p>Total events</p><b id="kTotal">—</b></div>
+      <div class="kpi"><p>Upcoming</p><b id="kUp">—</b></div>
+      <div class="kpi"><p>Pending approval</p><b id="kPend">—</b></div>
+      <div class="kpi"><p>Total budget</p><b id="kBudget">—</b></div>
+      <div class="kpi"><p>Next event</p><b id="kNextDate">—</b><small id="kNext"></small></div>
+    </div>
+    <div class="toolbar">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="eq" type="search" placeholder="Search event, city or note" aria-label="Search events"></div>
+      <div class="seg" id="ewhen"><button data-w="up" aria-pressed="true">Upcoming</button><button data-w="past" aria-pressed="false">Past</button><button data-w="all" aria-pressed="false">All</button></div>
+      <select class="small" id="emgr" aria-label="Account manager"><option value="">All managers</option></select>
+      <button class="btn primary" id="addEventBtn" data-admin hidden>Add event</button>
+    </div>
+    <div id="addEventBox" hidden></div>
+    <p class="resultnote" id="eNote"></p>
+    <div class="sheet"><table>
+      <thead><tr><th class="rn">#</th>
+        <th data-s="date">Date<span class="ar"></span></th><th data-s="name">Event / Location<span class="ar"></span></th><th data-s="format">Format<span class="ar"></span></th>
+        <th data-s="manager">Account manager<span class="ar"></span></th><th data-s="approval">Approval<span class="ar"></span></th><th data-s="payment">Payment<span class="ar"></span></th>
+        <th data-s="total" style="text-align:right">Total ($)<span class="ar"></span></th><th data-s="mats">Materials<span class="ar"></span></th></tr></thead>
+      <tbody id="eBody"></tbody>
+      <tfoot><tr><td class="rn"></td><td colspan="6" id="fLabel">Total</td><td class="num" id="fTotal"></td><td></td></tr></tfoot>
+    </table></div>
+  </section>
+
+  <section id="v-catalog" hidden>
+    <p class="eyebrow">Marketing materials</p>
+    <h1>Materials</h1>
+    <p class="lede">Add what you need to the cart, then send one request with the event, ship-to address and need-by date.</p>
+    <div style="height:14px"></div>
+    <div id="evBanner"></div>
+    <div class="toolbar">
+      <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search by name or SKU" aria-label="Search materials"></div>
+      <label class="toggle"><input type="checkbox" id="inStockOnly">In stock only</label>
+      <div class="chips" id="filters"></div>
+    </div>
+    <p class="resultnote" id="resultNote"></p>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="v-requests" hidden>
+    <p class="eyebrow">Material requests</p>
+    <h1>Requests</h1>
+    <p class="lede">Every request sent through the hub, newest first. Status changes to Sent with a tracking number once it ships.</p>
+    <div class="toolbar"><select class="small" id="mgrFilter"><option value="">All account managers</option></select></div>
+    <div id="reqList"></div>
+  </section>
+
+  <section id="v-admin" hidden>
+    <p class="eyebrow">Only you see this</p>
+    <h1>Admin</h1>
+    <div class="subtabs"><button class="chip" data-a="orders" aria-pressed="true">Orders</button><button class="chip" data-a="materials" aria-pressed="false">Materials</button></div>
+    <div id="a-orders">
+      <div class="stats"><div class="kpi"><p>Not sent</p><b id="sNot" style="color:var(--amber)">0</b></div><div class="kpi"><p>Sent</p><b id="sSent" style="color:var(--green)">0</b></div><div class="kpi"><p>Due in 7 days</p><b id="sDue" style="color:var(--red)">0</b></div></div>
+      <div class="tablewrap"><table class="plain"><thead><tr><th>Event</th><th>Manager</th><th>Needed by</th><th>Items</th><th>Status</th><th>Ship / tracking</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
+    </div>
+    <div id="a-materials" hidden>
+      <p class="note">Change stock or hide an item from the catalog, then press Save on that row. Stock goes down automatically when you mark an order Sent.</p>
+      <div class="tablewrap" id="matList"></div>
+      <form id="addMat" class="two" style="margin-top:16px;align-items:end">
+        <label>New material name<input id="nmName" required></label>
+        <label>Category<select id="nmCat"></select></label>
+        <label>SKU<input id="nmSku" required value="MRKTNG - "></label>
+        <label>In stock<input id="nmStock" type="number" min="0" value="0"></label>
+        <button class="btn primary" type="submit">Add material</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <button data-v="events" aria-current="true">/*I_EV*/Events</button>
+  <button data-v="catalog">/*I_CAT*/Materials</button>
+  <button data-v="requests">/*I_REQ*/Requests<span class="badge" data-badge="req"></span></button>
+  <button id="tabCart">/*I_CART*/Cart<span class="badge hot" data-badge="cart"></span></button>
+  <button data-v="admin" data-admin hidden>/*I_ADM*/Admin<span class="badge hot" data-badge="adm"></span></button>
+</nav>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Cart">
+  <div class="dhead"><h2>Your request</h2><button class="btn" id="closeCart">Close</button></div>
+  <div id="cartLines"></div>
+  <form id="orderForm" style="margin-top:14px">
+    <label>Event<select id="fEventSel" required></select></label>
+    <label id="fEventOtherWrap" hidden>Event name<input id="fEvent" placeholder="e.g. Graybar Counter Day, Tulsa OK"></label>
+    <label>Account manager<select id="fMgr" required></select></label>
+    <label>Needed by<input id="fNeed" type="date" required></label>
+    <label>Ship to<textarea id="fShip" required placeholder="Name, company, street, city, state, ZIP"></textarea></label>
+    <label>Notes<textarea id="fNotes" placeholder="Anything marketing should know"></textarea></label>
+    <button class="btn primary" type="submit" id="sendBtn">Send request</button>
+    <p class="note" id="formNote"></p>
+  </form>
+</aside>
+<div class="toast" id="toast" hidden></div>
+<div class="lb" id="lb" hidden role="dialog" aria-label="Photo"><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure></div>
+
+<script>
+const PHOTOS = /*PHOTOS*/{};
+const CATS = ["Print & Brochures","Promo & Office","Apparel","Display & Booth"];
+const FORMATS = ["Open House / Customer Appreciation","Golf Outing","Grand Opening","Trade Show","Holiday Lunch","Other"];
+const APPROVALS = ["Approved","Pending","Rejected"];
+const PAYMENTS = ["Not started","Payment in progress","Paid","Cancelled"];
+const MANAGERS = ["Thomas Egbers","Morgan Pixley","Mary Benton","Arthur \"Buzz\" Carruth","Steve Merrick","David Sarver","Valerii Mashkovtsev","Nonna Airapetova","Chris Morton","Gary","Edward","Val","Other"];
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let db=null, user=null, assets=null, isOwner=false;
+let materials=[], orders=[], events=[], cat="All", q="", inStockOnly=false;
+let eq="", ewhen="up", emgr="", esort={k:"date",d:1}, openEv=null, editEv=null, pickedEvent="";
+let cart={};
+try { cart = JSON.parse(localStorage.getItem("asd-cart")||"{}")||{}; } catch(e){ cart={}; }
+const saveCart = () => { try { localStorage.setItem("asd-cart", JSON.stringify(cart)); } catch(e){} };
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600); }
+function photoOf(m){ return m.photo || PHOTOS[m.sku] || ""; }
+function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function fmt(d,short){ if(!d) return "—"; const [y,m,dd]=d.split("-").map(Number); return new Date(y,m-1,dd).toLocaleDateString("en-US",short?{month:"short",day:"numeric"}:{month:"short",day:"numeric",year:"numeric"}); }
+function daysUntil(d){ const [y,m,dd]=d.split("-").map(Number); const t=new Date(); t.setHours(0,0,0,0); return Math.round((new Date(y,m-1,dd)-t)/864e5); }
+function money(n){ return n==null||n===""?"—":"$"+Number(n).toLocaleString("en-US"); }
+function stockClass(n){ return n<=0?"out":n<25?"low":"ok"; }
+function stockText(n){ return n<=0?"Out of stock":n+" in stock"; }
+function pillCls(v){ v=String(v||"").toLowerCase(); return v.includes("approved")?"approved":v==="paid"?"paid":v.includes("pending")?"pending":v.includes("progress")||v.includes("not started")?"progress":v.includes("reject")?"rejected":v.includes("cancel")?"cancelled":"none"; }
+function badge(k,v){ document.querySelectorAll(`[data-badge="${k}"]`).forEach(b=>b.textContent = v ? v : ""); }
+function ordersFor(ev){ return orders.filter(o=>o.eventId===ev.id || (!o.eventId && o.event===ev.name)); }
+
+function setHH(){ document.documentElement.style.setProperty("--hh", document.querySelector("header").offsetHeight+"px"); }
+setHH(); addEventListener("resize",setHH);
+document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>show(b.dataset.v));
+function show(v){ if(v==="admin"&&!isOwner) v="events";
+  document.querySelectorAll("[data-v]").forEach(b=>b.setAttribute("aria-current", b.dataset.v===v));
+  ["events","catalog","requests","admin"].forEach(x=>$("#v-"+x).hidden = x!==v);
+  try{ if(location.hash!=="#"+v) history.replaceState(null,"","#"+v); }catch(e){} scrollTo({top:0}); }
+document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-a]").forEach(x=>x.setAttribute("aria-pressed", x===b)); $("#a-orders").hidden=b.dataset.a!=="orders"; $("#a-materials").hidden=b.dataset.a!=="materials"; });
+$("#lb").onclick=()=>{ $("#lb").hidden=true; };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ $("#lb").hidden=true; openCart(false); } });
+
+/* events sheet */
+$("#emgr").innerHTML += MANAGERS.filter(m=>m!=="Other").map(m=>`<option>${esc(m)}</option>`).join("");
+$("#eq").addEventListener("input",e=>{ eq=e.target.value.trim().toLowerCase(); renderEvents(); });
+$("#emgr").onchange=e=>{ emgr=e.target.value; renderEvents(); };
+document.querySelectorAll("#ewhen button").forEach(b=>b.onclick=()=>{ ewhen=b.dataset.w; document.querySelectorAll("#ewhen button").forEach(x=>x.setAttribute("aria-pressed",x===b)); esort={k:"date",d:ewhen==="past"?-1:1}; renderEvents(); });
+document.querySelectorAll(".sheet th[data-s]").forEach(th=>th.onclick=()=>{ const k=th.dataset.s; esort = esort.k===k?{k,d:-esort.d}:{k,d:1}; renderEvents(); });
+function matStatus(ev){ const os=ordersFor(ev); if(!os.length) return {t:"None yet",c:"none",n:0}; const items=os.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+(Number(i.qty)||0),0),0); const notSent=os.some(o=>o.status!=="Sent"); return {t:notSent?"Requested":"Sent",c:notSent?"not":"sent",n:items}; }
+function renderEvents(){
+  const t=today();
+  const up=events.filter(e=>e.date && e.date>=t).sort((a,b)=>a.date.localeCompare(b.date));
+  $("#kTotal").textContent=events.length||"—"; $("#kUp").textContent=events.length?up.length:"—";
+  $("#kPend").textContent=events.length?events.filter(e=>pillCls(e.approval)==="pending").length:"—";
+  $("#kBudget").textContent=events.length?money(events.reduce((s,e)=>s+(Number(e.total)||0),0)):"—";
+  $("#kNextDate").textContent=up[0]?fmt(up[0].date):"—"; $("#kNext").textContent=up[0]?up[0].name:"";
+  let list=events.filter(e=>{
+    if(ewhen==="up" && !(e.date>=t)) return false; if(ewhen==="past" && !(e.date && e.date<t)) return false;
+    if(emgr && !String(e.manager||"").includes(emgr)) return false;
+    if(eq && !(`${e.name} ${e.format} ${e.manager} ${e.notes}`.toLowerCase().includes(eq))) return false; return true; });
+  const key=e=> esort.k==="total"?(Number(e.total)||0): esort.k==="mats"?matStatus(e).n : String(e[esort.k]||"").toLowerCase();
+  list.sort((a,b)=>{ const x=key(a),y=key(b); return (x>y?1:x<y?-1:0)*esort.d; });
+  document.querySelectorAll(".sheet th[data-s]").forEach(th=>th.querySelector(".ar").textContent = th.dataset.s===esort.k ? (esort.d>0?"▲":"▼") : "");
+  $("#eNote").textContent = events.length ? `Showing ${list.length} of ${events.length} events` : "";
+  $("#fLabel").textContent = `Total for ${list.length} event${list.length===1?"":"s"} shown`;
+  $("#fTotal").textContent = money(list.reduce((s,e)=>s+(Number(e.total)||0),0));
+  if(!list.length){ $("#eBody").innerHTML=`<tr><td class="rn"></td><td colspan="8" class="note" style="padding:24px;text-align:center">${events.length?"No events match these filters.":(db?"No events yet.":"Loading events…")}</td></tr>`; return; }
+  $("#eBody").innerHTML = list.map((e,i)=>{ const ms=matStatus(e), past=e.date && e.date<t, open=openEv===e.id;
+    const row=`<tr class="er ${past?"past":""} ${open?"open":""}" data-ev="${esc(e.id)}" tabindex="0"><td class="rn">${i+1}</td>
+      <td class="date">${fmt(e.date)}</td><td class="nm">${esc(e.name)}${e.notes?`<small>${esc(e.notes)}</small>`:""}</td><td>${esc(e.format)}</td>
+      <td>${esc(e.manager)||"—"}</td><td><span class="pill ${pillCls(e.approval)}">${esc(e.approval)||"—"}</span></td><td><span class="pill ${pillCls(e.payment)}">${esc(e.payment)||"—"}</span></td>
+      <td class="num">${money(e.total)}</td><td><span class="pill ${ms.c}">${ms.t}</span>${ms.n?` <span class="note">${ms.n} pcs</span>`:""}</td></tr>`;
+    return row + (open?`<tr class="detail"><td class="rn"></td><td colspan="8">${detailHtml(e)}</td></tr>`:"");
+  }).join("");
+  $("#eBody").querySelectorAll("tr.er").forEach(r=>{ const f=()=>{ openEv = openEv===r.dataset.ev?null:r.dataset.ev; editEv=null; renderEvents(); };
+    r.onclick=f; r.onkeydown=e=>{ if(e.target===r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); f(); } }; });
+  wireDetail($("#eBody"));
+}
+function detailHtml(e){
+  const os=ordersFor(e);
+  const ordHtml = os.length ? os.map(o=>`<div class="ordcard"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(o.manager)}</b><span class="pill ${o.status==="Sent"?"sent":"not"}">${esc(o.status)}</span></div>
+      <div class="note">Needed by ${fmt(o.neededBy)}${o.tracking?` · Tracking <span class="sku">${esc(o.tracking)}</span>`:""}</div>
+      <ul>${(o.items||[]).map(i=>`<li><b>${Number(i.qty)||0}</b> × ${esc(i.name)}</li>`).join("")}</ul></div>`).join("")
+    : `<p class="note" style="margin:0 0 10px">No materials requested for this event yet.</p>`;
+  const editing = isOwner && editEv===e.id;
+  return `<div class="dgrid"><div><h3>Materials for this event</h3>${ordHtml}<button class="btn primary" data-reqfor="${esc(e.id)}">Request materials for this event</button></div>
+    <div><h3>Event details</h3>${editing?eventForm(e):`<div class="ordcard"><div><b>${esc(e.name)}</b></div><div class="note">${esc(e.format)} · ${fmt(e.date)}</div>${e.notes?`<p style="margin:8px 0 0">${esc(e.notes)}</p>`:""}</div>${isOwner?`<button class="btn" data-editev="${esc(e.id)}">Edit event</button>`:""}`}</div></div>`;
+}
+function opts(list,v){ const l=v&&!list.includes(v)?[v,...list]:list; return l.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join(""); }
+function eventForm(e){ e=e||{}; const id=e.id||"new";
+  return `<form class="edit" data-evform="${esc(id)}">
+    <label class="full">Event / Location<input name="name" required value="${esc(e.name)}"></label>
+    <label>Date<input name="date" type="date" required value="${esc(e.date)}"></label>
+    <label>Format<select name="format">${opts(FORMATS,e.format)}</select></label>
+    <label>Account manager<input name="manager" value="${esc(e.manager)}" list="mgrList"></label>
+    <label>Total ($)<input name="total" type="number" min="0" step="1" value="${e.total??""}"></label>
+    <label>Approval<select name="approval">${opts(APPROVALS,e.approval||"Pending")}</select></label>
+    <label>Payment<select name="payment">${opts(PAYMENTS,e.payment||"Not started")}</select></label>
+    <label class="full">Notes<input name="notes" value="${esc(e.notes)}"></label>
+    <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-cancel>Cancel</button>
+    ${e.id?`<button class="btn danger" type="button" data-del="${esc(e.id)}" style="margin-left:auto">Delete event</button>`:""}</div></form>`; }
+function wireDetail(root){
+  root.querySelectorAll("[data-reqfor]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); pickedEvent=b.dataset.reqfor; renderBanner(); fillEventSelect(); show("catalog"); });
+  root.querySelectorAll("[data-editev]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); editEv=b.dataset.editev; renderEvents(); });
+  root.querySelectorAll(".detail").forEach(r=>r.onclick=ev=>ev.stopPropagation());
+  root.querySelectorAll("[data-evform]").forEach(f=>{ f.onclick=ev=>ev.stopPropagation();
+    f.querySelector("[data-cancel]").onclick=()=>{ editEv=null; $("#addEventBox").hidden=true; $("#addEventBox").innerHTML=""; renderEvents(); };
+    const del=f.querySelector("[data-del]"); if(del) del.onclick=async()=>{ if(del.dataset.sure!=="1"){ del.dataset.sure="1"; del.textContent="Click again to delete"; return; }
+      try{ await db.doc("events/"+del.dataset.del).delete(); openEv=null; editEv=null; renderEvents(); toast("Event deleted"); }catch(e){ toast("Could not delete. Try again."); } };
+    f.addEventListener("submit",async ev=>{ ev.preventDefault(); const d=Object.fromEntries(new FormData(f));
+      const body={name:d.name.trim(),date:d.date,format:d.format,manager:d.manager.trim(),total:d.total===""?null:Number(d.total),approval:d.approval,payment:d.payment,notes:d.notes.trim()};
+      try{ const id=f.dataset.evform;
+        if(id==="new"){ const nid=(body.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"event")+"-"+Date.now().toString(36); await db.doc("events/"+nid).set(body); $("#addEventBox").hidden=true; $("#addEventBox").innerHTML=""; openEv=nid; toast("Event added"); }
+        else { await db.doc("events/"+id).update(body); editEv=null; toast("Event saved"); }
+        renderEvents();
+      }catch(e){ toast("Could not save. Try again."); } }); });
+}
+$("#addEventBtn").onclick=()=>{ const box=$("#addEventBox"); box.hidden=!box.hidden; box.innerHTML = box.hidden?"":`<div class="ordcard" style="margin:8px 0 12px"><h2 style="margin-bottom:10px">New event</h2>${eventForm(null)}</div>`; wireDetail(box); };
+document.body.insertAdjacentHTML("beforeend", `<datalist id="mgrList">${MANAGERS.map(m=>`<option value="${esc(m)}">`).join("")}</datalist>`);
+
+/* catalog */
+$("#q").addEventListener("input",e=>{ q=e.target.value.trim().toLowerCase(); renderFilters(); renderGrid(); });
+$("#inStockOnly").onchange=e=>{ inStockOnly=e.target.checked; renderFilters(); renderGrid(); };
+function matches(m){ return m.active!==false && (!q||(m.name+" "+m.sku).toLowerCase().includes(q)) && (!inStockOnly||(Number(m.inStock)||0)>0); }
+function renderBanner(){ const e=events.find(x=>x.id===pickedEvent);
+  $("#evBanner").innerHTML = e?`<div class="evbanner"><span>Ordering for: ${esc(e.name)} · ${fmt(e.date)}</span><button class="btn" id="clearPick">Change event</button></div>`:"";
+  const c=$("#clearPick"); if(c) c.onclick=()=>{ pickedEvent=""; $("#fEventSel").value=""; renderBanner(); show("events"); }; }
+function renderFilters(){
+  const n=c=>materials.filter(m=>matches(m)&&(c==="All"||m.category===c)).length;
+  $("#filters").innerHTML = ["All",...CATS].map(c=>`<button class="chip" aria-pressed="${c===cat}" data-c="${esc(c)}">${esc(c)}${materials.length?`<em>${n(c)}</em>`:""}</button>`).join("");
+  $("#filters").querySelectorAll("button").forEach(b=>b.onclick=()=>{ cat=b.dataset.c; renderFilters(); renderGrid(); });
+}
+function renderGrid(){
+  const list=materials.filter(m=>matches(m)&&(cat==="All"||m.category===cat));
+  $("#resultNote").textContent = materials.length&&(q||inStockOnly||cat!=="All") ? `Showing ${list.length} of ${materials.filter(m=>m.active!==false).length} materials` : "";
+  if(!materials.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">${db?"No materials yet.":"Loading the catalog…"}</div>`; return; }
+  if(!list.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">Nothing matches${q?` “${esc(q)}”`:""}. Try another word or choose All.</div>`; return; }
+  $("#grid").innerHTML = list.map(m=>{ const p=photoOf(m), n=Number(m.inStock)||0, inCart=cart[m.id]||0;
+    return `<article class="card">${p?`<button class="ph" data-zoom="${esc(m.id)}" aria-label="Enlarge photo of ${esc(m.name)}"><img src="${esc(p)}" alt="${esc(m.name)}" loading="lazy"><span class="zoom">Enlarge</span></button>`:`<div class="ph" style="cursor:default"><span>ASD</span></div>`}
+    <div class="cb"><div class="cat">${esc(m.category)}</div><div class="nm2">${esc(m.name)}</div><div class="sku">${esc(m.sku)}</div>
+    <div class="row"><span class="stock ${stockClass(n)}">${stockText(n)}</span>
+    <span class="qty"><input id="q-${esc(m.id)}" type="number" min="1" value="${inCart||1}" aria-label="Quantity"><button class="btn ${inCart?"":"primary"}" data-add="${esc(m.id)}" ${n<=0?"disabled":""}>${inCart?"Update":"Add"}</button></span></div></div></article>`; }).join("");
+  $("#grid").querySelectorAll("[data-zoom]").forEach(b=>b.onclick=()=>{ const m=materials.find(x=>x.id===b.dataset.zoom); if(!m) return;
+    $("#lbImg").src=photoOf(m); $("#lbImg").alt=m.name; $("#lbCap").innerHTML=`${esc(m.name)}<small>${esc(m.sku)}</small>`; $("#lb").hidden=false; });
+  $("#grid").querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{ const id=b.dataset.add, n=Math.max(1,parseInt($("#q-"+CSS.escape(id)).value,10)||1);
+    cart[id]=n; saveCart(); renderCart(); renderGrid(); toast("Added to your request"); });
+}
+
+/* cart */
+function openCart(o){ $("#drawer").hidden=!o; $("#scrim").hidden=!o; if(o) fillEventSelect(); }
+$("#openCart").onclick=()=>openCart(true); $("#tabCart").onclick=()=>openCart(true); $("#closeCart").onclick=()=>openCart(false); $("#scrim").onclick=()=>openCart(false);
+function renderCart(){
+  const ids=Object.keys(cart); $("#cartCount").textContent=ids.length; badge("cart",ids.length);
+  if(!ids.length){ $("#cartLines").innerHTML=`<p class="note">Nothing here yet. Add materials from the Materials tab.</p>`; return; }
+  $("#cartLines").innerHTML = ids.map(id=>{ const m=materials.find(x=>x.id===id)||{name:id,sku:""}; const p=photoOf(m);
+    return `<div class="line">${p?`<img src="${esc(p)}" alt="">`:`<span class="ni"></span>`}<div class="t">${esc(m.name)}<div class="sku">${esc(m.sku)}</div></div>
+    <input type="number" min="1" value="${cart[id]}" data-q="${esc(id)}" style="width:64px" aria-label="Quantity"><button class="btn" data-rm="${esc(id)}">Remove</button></div>`; }).join("");
+  $("#cartLines").querySelectorAll("[data-q]").forEach(i=>i.onchange=()=>{ cart[i.dataset.q]=Math.max(1,parseInt(i.value,10)||1); saveCart(); });
+  $("#cartLines").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ delete cart[b.dataset.rm]; saveCart(); renderCart(); renderGrid(); });
+}
+function fillEventSelect(){
+  const t=today(), up=events.filter(e=>e.date>=t).sort((a,b)=>a.date.localeCompare(b.date));
+  const sel=$("#fEventSel"), cur=pickedEvent||sel.value;
+  sel.innerHTML = `<option value="">Choose the event</option>` + up.map(e=>`<option value="${esc(e.id)}">${esc(fmt(e.date,true))} · ${esc(e.name)}</option>`).join("") + `<option value="__other">Other event (type the name)</option>`;
+  if(cur && [...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  $("#fEventOtherWrap").hidden = sel.value!=="__other";
+  const ev=events.find(e=>e.id===sel.value);
+  if(ev){ const mg=MANAGERS.find(m=>String(ev.manager||"").includes(m)); if(mg && !$("#fMgr").value) $("#fMgr").value=mg;
+    if(!$("#fNeed").value && ev.date){ const [y,m,d]=ev.date.split("-").map(Number); const nb=new Date(y,m-1,d-7); $("#fNeed").value=`${nb.getFullYear()}-${String(nb.getMonth()+1).padStart(2,"0")}-${String(nb.getDate()).padStart(2,"0")}`; } }
+}
+$("#fEventSel").onchange=()=>{ pickedEvent=$("#fEventSel").value==="__other"?"":$("#fEventSel").value; $("#fNeed").value=""; renderBanner(); fillEventSelect(); };
+$("#fMgr").innerHTML = `<option value="">Choose your name</option>` + MANAGERS.map(m=>`<option>${esc(m)}</option>`).join("");
+$("#mgrFilter").innerHTML += MANAGERS.map(m=>`<option>${esc(m)}</option>`).join("");
+try{ const lm=localStorage.getItem("asd-mgr"); if(lm) $("#fMgr").value=lm; }catch(e){}
+$("#orderForm").addEventListener("submit", async e=>{ e.preventDefault();
+  if(!Object.keys(cart).length){ $("#formNote").textContent="Add at least one material first."; return; }
+  if(!db){ $("#formNote").textContent="The hub can't save requests in this view. Open it from your claude.ai link while signed in."; return; }
+  const sv=$("#fEventSel").value, ev=events.find(x=>x.id===sv), other=$("#fEvent").value.trim();
+  if(sv==="__other" && !other){ $("#formNote").textContent="Type the event name."; return; }
+  const items=Object.entries(cart).map(([id,qty])=>{ const m=materials.find(x=>x.id===id)||{}; return {id,name:m.name||id,sku:m.sku||"",qty}; });
+  const body={ eventId:ev?ev.id:"", event:ev?ev.name:other, eventDate:ev?ev.date:"", manager:$("#fMgr").value, neededBy:$("#fNeed").value,
+    shipTo:$("#fShip").value.trim(), notes:$("#fNotes").value.trim(), items, status:"Not sent", sentDate:"", tracking:"", createdAt:new Date().toISOString() };
+  $("#sendBtn").disabled=true;
+  try{ await db.collection("orders").add(body); try{ localStorage.setItem("asd-mgr",body.manager); }catch(e){}
+    cart={}; saveCart(); pickedEvent=""; $("#orderForm").reset(); $("#fMgr").value=body.manager; $("#formNote").textContent="";
+    renderCart(); renderGrid(); renderBanner(); openCart(false); show("requests"); toast("Request sent to marketing");
+  }catch(err){ $("#formNote").textContent = err&&err.code==="invalid_argument" ? "Your access to this page is view-only, so the request was not saved. Ask Vira to give you edit access." : "The request was not saved. Check your connection and try again."; }
+  finally{ $("#sendBtn").disabled=false; } });
+
+/* requests */
+$("#mgrFilter").onchange=renderRequests;
+function itemsHtml(o){ return `<ul class="items">${(o.items||[]).map(i=>`<li><b>${Number(i.qty)||0}</b> × ${esc(i.name)}</li>`).join("")}</ul>`; }
+function renderRequests(){
+  badge("req",orders.length); badge("adm",orders.filter(o=>o.status!=="Sent").length);
+  const f=$("#mgrFilter").value, list=orders.filter(o=>!f||o.manager===f);
+  if(!list.length){ $("#reqList").innerHTML=`<div class="empty">No requests yet. Requests sent from the cart show up here with their status.</div>`; return; }
+  $("#reqList").innerHTML=`<div class="tablewrap"><table class="plain"><thead><tr><th>Event</th><th>Manager</th><th>Needed by</th><th>Items</th><th>Status</th><th>Tracking</th></tr></thead><tbody>${
+    list.map(o=>`<tr><td><b>${esc(o.event)}</b>${o.eventDate?`<div class="note">Event ${fmt(o.eventDate)}</div>`:""}</td><td>${esc(o.manager)}</td><td>${fmt(o.neededBy)}</td><td>${itemsHtml(o)}</td>
+    <td><span class="pill ${o.status==="Sent"?"sent":"not"}">${esc(o.status)}</span>${o.sentDate?`<div class="note">${fmt(o.sentDate)}</div>`:""}</td><td class="sku">${esc(o.tracking)||"—"}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+/* admin */
+function renderAdmin(){
+  if(!isOwner) return;
+  const not=orders.filter(o=>o.status!=="Sent");
+  $("#sNot").textContent=not.length; $("#sSent").textContent=orders.length-not.length; $("#sDue").textContent=not.filter(o=>o.neededBy&&daysUntil(o.neededBy)<=7).length;
+  renderMatAdmin();
+  if($("#ordersBody").contains(document.activeElement)) return;
+  const sorted=[...orders].sort((a,b)=>(a.status==="Sent")-(b.status==="Sent")||String(a.neededBy).localeCompare(String(b.neededBy)));
+  $("#ordersBody").innerHTML = sorted.length ? sorted.map(o=>{ const urgent=o.status!=="Sent"&&o.neededBy&&daysUntil(o.neededBy)<=7;
+    return `<tr class="${urgent?"urgent":""}"><td><b>${esc(o.event)}</b>${o.notes?`<div class="note">${esc(o.notes)}</div>`:""}</td><td>${esc(o.manager)}</td><td>${fmt(o.neededBy)}</td><td>${itemsHtml(o)}</td>
+    <td><span class="pill ${o.status==="Sent"?"sent":"not"}">${esc(o.status)}</span></td>
+    <td><div class="note" style="white-space:pre-line;margin-bottom:6px">${esc(o.shipTo)}</div>${o.status==="Sent"
+      ?`<div class="sku">${fmt(o.sentDate)} · ${esc(o.tracking)||"no tracking"}</div><button class="btn" data-unsend="${esc(o.id)}" style="margin-top:6px">Set Not sent</button>`
+      :`<div style="display:flex;gap:6px;flex-wrap:wrap"><input id="tr-${esc(o.id)}" placeholder="Tracking #" style="max-width:170px"><button class="btn primary" data-send="${esc(o.id)}">Mark Sent</button></div>`}</td></tr>`; }).join("")
+    : `<tr><td colspan="6" class="note" style="text-align:center;padding:24px">No requests yet.</td></tr>`;
+  $("#ordersBody").querySelectorAll("[data-send]").forEach(b=>b.onclick=()=>setSent(b.dataset.send,true));
+  $("#ordersBody").querySelectorAll("[data-unsend]").forEach(b=>b.onclick=()=>setSent(b.dataset.unsend,false));
+}
+async function setSent(id,sent){ const o=orders.find(x=>x.id===id); if(!o) return;
+  try{ const tracking=sent?($("#tr-"+CSS.escape(id)).value||"").trim():"";
+    await db.doc("orders/"+id).update({status:sent?"Sent":"Not sent",sentDate:sent?today():"",tracking});
+    for(const it of o.items||[]){ const m=materials.find(x=>x.id===it.id); if(!m) continue;
+      await db.doc("materials/"+m.id).update({inStock:Math.max(0,(Number(m.inStock)||0)+(sent?-1:1)*(Number(it.qty)||0))}); }
+    toast(sent?"Marked Sent, stock updated":"Back to Not sent, stock restored");
+  }catch(e){ toast("Could not save. Try again."); } }
+function renderMatAdmin(){ const box=$("#matList"); if(box.contains(document.activeElement)) return;
+  box.innerHTML = materials.map(m=>{ const p=photoOf(m); return `<div class="mrow"><label class="upl" title="Change photo">${p?`<img src="${esc(p)}" alt="">`:`<span class="ni"></span>`}${assets?`<input type="file" accept="image/*" data-photo="${esc(m.id)}" hidden>Change`:""}</label>
+    <div style="min-width:0"><b>${esc(m.name)}</b><div class="sku">${esc(m.sku)}</div></div><div class="hide-s note">${esc(m.category)}</div>
+    <input type="number" min="0" id="st-${esc(m.id)}" value="${Number(m.inStock)||0}" aria-label="In stock">
+    <label class="hide-s" style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="ac-${esc(m.id)}" ${m.active!==false?"checked":""} style="width:auto">Shown</label>
+    <button class="btn" data-save="${esc(m.id)}">Save</button></div>`; }).join("") || `<div class="empty">No materials yet.</div>`;
+  box.querySelectorAll("[data-save]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.save;
+    try{ await db.doc("materials/"+id).update({inStock:Math.max(0,parseInt($("#st-"+CSS.escape(id)).value,10)||0),active:$("#ac-"+CSS.escape(id)).checked}); toast("Saved"); }catch(e){ toast("Could not save. Try again."); } });
+  box.querySelectorAll("[data-photo]").forEach(i=>i.onchange=async()=>{ const f=i.files[0]; if(!f) return;
+    try{ toast("Uploading photo…"); const a=await assets.upload(f); await db.doc("materials/"+i.dataset.photo).update({photo:a.url}); toast("Photo updated"); }catch(e){ toast("Photo upload failed. Try a smaller JPG or PNG."); } });
+}
+$("#nmCat").innerHTML=CATS.map(c=>`<option>${esc(c)}</option>`).join("");
+$("#addMat").addEventListener("submit",async e=>{ e.preventDefault(); if(!db) return;
+  const sku=$("#nmSku").value.trim(), id=sku.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||("m"+Date.now());
+  try{ await db.doc("materials/"+id).set({name:$("#nmName").value.trim(),category:$("#nmCat").value,sku,inStock:Math.max(0,parseInt($("#nmStock").value,10)||0),active:true,sort:materials.length+1});
+    $("#addMat").reset(); $("#nmSku").value="MRKTNG - "; toast("Material added"); }catch(err){ toast("Could not add. Try again."); } });
+
+/* boot */
+renderEvents(); renderFilters(); renderGrid(); renderCart(); renderRequests();
+(async()=>{
+  if(!window.claude){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">Open this page from its claude.ai link to see the live data.</div>`; return; }
+  const [d,u,a]=await Promise.all([claude.use("db"),claude.use("user"),claude.use("assets")]);
+  db=d; user=u; assets=a;
+  if(user){ try{ isOwner=!!(await user.isOwner()); }catch(e){} }
+  document.querySelectorAll("[data-admin]").forEach(b=>b.hidden=!isOwner);
+  { const h=(location.hash||"").slice(1); if(["events","catalog","requests","admin"].includes(h)) show(h); }
+  if(!db){ $("#eBody").innerHTML=`<tr><td class="rn"></td><td colspan="8" class="note" style="padding:24px;text-align:center">Sign in to claude.ai to see events and send requests.</td></tr>`; return; }
+  db.collection("events").onSnapshot(s=>{ events=s.docs.map(x=>({id:x.id,...x.data()})); if(!editEv) renderEvents(); renderBanner(); }, ()=>toast("Events stopped updating. Reload the page."));
+  db.collection("materials").orderBy("sort").onSnapshot(s=>{ materials=s.docs.map(x=>({id:x.id,...x.data()})); renderFilters(); renderGrid(); renderCart(); renderAdmin(); }, ()=>toast("Catalog stopped updating. Reload the page."));
+  db.collection("orders").orderBy("createdAt","desc").onSnapshot(s=>{ orders=s.docs.map(x=>({id:x.id,...x.data()})); renderRequests(); renderAdmin(); if(!editEv) renderEvents(); }, ()=>toast("Requests stopped updating. Reload the page."));
+})();
+</script>

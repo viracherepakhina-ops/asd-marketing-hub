@@ -223,6 +223,68 @@ input,select,textarea{background:var(--surface);border-radius:10px}
 @media (max-width:720px){.tabbar{background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px)}
 .tabbar button[aria-current="true"]{color:var(--fg);background:var(--accent-soft)}
 .kpi{padding-right:14px;margin-right:14px}.kpi b{font-size:20px}}
+/* phone layout: tables become cards */
+@media (max-width:720px){
+  main{padding-top:20px}
+  .lede{font-size:14px}
+  .toolbar{position:static;padding-block:8px;border-bottom:0}
+  .search{flex-basis:100%;max-width:none}
+  select.small{flex:1}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;border-bottom:0}
+  .kpi{border-right:0;margin-right:0;padding:10px 0;border-bottom:1px solid var(--line)}
+  .kpi:last-child{grid-column:1/-1}
+  .kpi b{white-space:normal}.kpi small{white-space:normal}
+  .sheet{overflow:visible;background:none;border:0;box-shadow:none;max-height:none}
+  .sheet table{min-width:0;display:block}
+  .sheet thead{display:none}
+  .sheet tbody{display:grid;gap:10px}
+  .sheet tbody tr.er{display:grid;grid-template-columns:1fr auto;gap:4px 10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .sheet tbody tr.er td{display:block;padding:0;border:0;background:none!important;min-width:0}
+  .sheet tbody tr.er td.rn{display:none}
+  .sheet tbody tr.er td:nth-child(2){grid-column:1;grid-row:1;font-size:12px;color:var(--muted)}
+  .sheet tbody tr.er td:nth-child(8){grid-column:2;grid-row:1;font-size:13px;color:var(--fg)}
+  .sheet tbody tr.er td:nth-child(3){grid-column:1/-1;grid-row:2;min-width:0;font-size:15px}
+  .sheet tbody tr.er td:nth-child(4),.sheet tbody tr.er td:nth-child(5){grid-column:1/-1;font-size:13px;color:var(--muted)}
+  .sheet tbody tr.er td:nth-child(4){grid-row:3}.sheet tbody tr.er td:nth-child(5){grid-row:4}
+  .sheet tbody tr.er td:nth-child(6),.sheet tbody tr.er td:nth-child(7),.sheet tbody tr.er td:nth-child(9){display:inline-flex;grid-row:5;font-size:12.5px}
+  .sheet tbody tr.er td:nth-child(6){grid-column:1}
+  .sheet tbody tr.er td:nth-child(7){grid-column:2}
+  .sheet tbody tr.er td:nth-child(9){grid-column:1/-1;grid-row:6}
+  .sheet tbody tr.er td:nth-child(6)::after{content:" approval";color:var(--muted);margin-left:4px}
+  .sheet tbody tr.er td:nth-child(7)::after{content:" payment";color:var(--muted);margin-left:4px}
+  .sheet tbody tr.er td:nth-child(9)::before{content:"Materials:";color:var(--muted);margin-right:6px}
+  .sheet tr.past{opacity:.75}
+  .sheet tr.open{border-color:var(--fg)!important}
+  .sheet tbody tr.detail{display:block}
+  .sheet tbody tr.detail td{display:block;border:0;padding:12px 2px 4px}
+  .sheet tbody tr.detail td.rn{display:none}
+  .sheet tfoot{display:block}
+  .sheet tfoot tr{display:flex;justify-content:space-between;padding:10px 4px}
+  .sheet tfoot td{position:static;background:none;border:0;padding:0}
+  .sheet tfoot td.rn,.sheet tfoot td:last-child{display:none}
+  .grid{grid-template-columns:1fr 1fr;gap:12px}
+  .ph{padding:8px}
+  .cb{padding:10px 10px 12px;gap:4px}
+  .nm2{font-size:14px}
+  .sku{font-size:10.5px}
+  .row{flex-direction:column;align-items:stretch;gap:8px}
+  .qty{justify-content:space-between}
+  .qty input{width:52px}
+  .qty .btn{flex:1}
+  .tablewrap{overflow:visible;background:none;border:0}
+  .plain{min-width:0;display:block}
+  .plain thead{display:none}
+  .plain tbody{display:grid;gap:10px}
+  .plain tr{display:grid;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .plain tr.urgent{border-color:var(--red)}
+  .plain td{display:block;padding:0;border:0;background:none!important}
+  .plain td:empty{display:none}
+  .plain td:nth-child(2)::before{content:"Manager: ";color:var(--muted)}
+  .plain td:nth-child(3)::before{content:"Needed by: ";color:var(--muted)}
+  .plain td.sku:not(:empty)::before{content:"Tracking: "}
+  .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .drawer{padding-left:max(16px,env(safe-area-inset-left,0px))}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <script>/* Tiny client for the site's /api — same shape the page code uses (collection/doc/onSnapshot). */

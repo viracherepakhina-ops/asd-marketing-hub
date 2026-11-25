@@ -98,7 +98,7 @@ select.small{width:auto;height:40px;background:var(--surface)}
 .card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(20,30,60,.12)}
 .ph{aspect-ratio:1/1;background:radial-gradient(circle at 50% 40%,var(--surface),var(--bg) 75%);display:grid;place-items:center;overflow:hidden;max-width:100%;padding:14px;border:0;width:100%;cursor:zoom-in;position:relative}
 .ph img{width:100%;height:100%;object-fit:contain;border-radius:6px;filter:drop-shadow(0 6px 14px rgba(0,0,0,.14))}
-.ph>span:not(.zoom){font-family:var(--display);font-size:40px;color:var(--muted);opacity:.5}
+.ph>span:not(.zoom):not(.count):not(.dots){font-family:var(--display);font-size:40px;color:var(--muted);opacity:.5}
 .ph .zoom{position:absolute;right:10px;bottom:10px;font:600 12px var(--body);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:3px 9px;opacity:0;transition:opacity .15s}
 .card:hover .zoom,.ph:focus-visible .zoom{opacity:1}
 .cb{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1;border-top:1px solid var(--line)}
@@ -145,6 +145,15 @@ textarea{min-height:64px;resize:vertical}
 .lb{position:fixed;inset:0;z-index:40;background:rgba(8,10,18,.84);display:grid;place-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));cursor:zoom-out}
 .lb figure{margin:0;display:grid;gap:12px;justify-items:center;max-width:100%}
 .lb img{max-height:78vh;max-width:min(92vw,720px);width:auto;border-radius:10px;background:#fff}
+.ph .strip{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:0}
+.ph .strip::-webkit-scrollbar{display:none}
+.ph .strip img{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;object-fit:contain}
+.ph .dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;pointer-events:none}
+.ph .dots i{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.22)}
+.ph .dots i.on{background:rgba(0,0,0,.7)}
+.ph .count{position:absolute;left:10px;top:10px;font:600 11px var(--body);background:rgba(255,255,255,.9);color:#121417;border-radius:10px;padding:2px 7px}
+.lbnav{position:fixed;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#121417;font-size:22px;cursor:pointer;z-index:41}
+#lbPrev{left:max(12px,env(safe-area-inset-left,0px))}#lbNext{right:max(12px,env(safe-area-inset-right,0px))}
 .lb figcaption{color:#fff;text-align:center;font-weight:600}.lb figcaption small{display:block;font-family:var(--mono);font-weight:400;opacity:.75}
 .tabbar{display:none}
 @media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:last-child{grid-column:1/-1}.dgrid{grid-template-columns:1fr}}
@@ -394,7 +403,7 @@ input,select,textarea{background:var(--surface);border-radius:10px}
   </form>
 </aside>
 <div class="toast" id="toast" hidden></div>
-<div class="lb" id="lb" hidden role="dialog" aria-label="Photo"><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure></div>
+<div class="lb" id="lb" hidden role="dialog" aria-label="Photo"><button class="lbnav" id="lbPrev" aria-label="Previous photo">‹</button><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure><button class="lbnav" id="lbNext" aria-label="Next photo">›</button></div>
 
 <script>
 const PHOTOS = /*PHOTOS*/{};
@@ -414,6 +423,11 @@ const saveCart = () => { try { localStorage.setItem("asd-cart", JSON.stringify(c
 
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2600); }
 function photoOf(m){ return m.photo || PHOTOS[m.sku] || ""; }
+function photosOf(m){ return [...new Set([photoOf(m),...(Array.isArray(m.photos)?m.photos:[])].filter(Boolean))]; }
+let lbList=[], lbI=0, lbM=null;
+function lbShow(){ $("#lbImg").src=lbList[lbI]; $("#lbImg").alt=lbM.name; $("#lbCap").innerHTML=`${esc(lbM.name)}<small>${esc(lbM.sku)}${lbList.length>1?` · ${lbI+1} / ${lbList.length}`:""}</small>`; $("#lbPrev").hidden=$("#lbNext").hidden=lbList.length<2; }
+function lbOpen(m,i){ lbM=m; lbList=photosOf(m); lbI=i||0; lbShow(); $("#lb").hidden=false; }
+function lbStep(d){ if(lbList.length<2) return; lbI=(lbI+d+lbList.length)%lbList.length; lbShow(); }
 function today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function fmt(d,short){ if(!d) return "—"; const [y,m,dd]=d.split("-").map(Number); return new Date(y,m-1,dd).toLocaleDateString("en-US",short?{month:"short",day:"numeric"}:{month:"short",day:"numeric",year:"numeric"}); }
 function daysUntil(d){ const [y,m,dd]=d.split("-").map(Number); const t=new Date(); t.setHours(0,0,0,0); return Math.round((new Date(y,m-1,dd)-t)/864e5); }
@@ -432,7 +446,11 @@ function show(v){ if(v==="admin"&&!isOwner) v="events";
   ["events","catalog","requests","admin"].forEach(x=>$("#v-"+x).hidden = x!==v);
   try{ if(location.hash!=="#"+v) history.replaceState(null,"","#"+v); }catch(e){} scrollTo({top:0}); }
 document.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-a]").forEach(x=>x.setAttribute("aria-pressed", x===b)); $("#a-orders").hidden=b.dataset.a!=="orders"; $("#a-materials").hidden=b.dataset.a!=="materials"; });
-$("#lb").onclick=()=>{ $("#lb").hidden=true; };
+$("#lb").onclick=e=>{ if(e.target.closest(".lbnav")) return; $("#lb").hidden=true; };
+$("#lbPrev").onclick=e=>{ e.stopPropagation(); lbStep(-1); }; $("#lbNext").onclick=e=>{ e.stopPropagation(); lbStep(1); };
+{ let x0=null; $("#lb").addEventListener("touchstart",e=>{ x0=e.touches[0].clientX; },{passive:true});
+  $("#lb").addEventListener("touchend",e=>{ if(x0===null) return; const dx=e.changedTouches[0].clientX-x0; x0=null; if(Math.abs(dx)>40){ e.preventDefault(); lbStep(dx<0?1:-1); } }); }
+document.addEventListener("keydown",e=>{ if($("#lb").hidden) return; if(e.key==="ArrowRight") lbStep(1); if(e.key==="ArrowLeft") lbStep(-1); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ $("#lb").hidden=true; openCart(false); } });
 
 /* events sheet */
@@ -531,12 +549,18 @@ function renderGrid(){
   if(!materials.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">${db?"No materials yet.":"Loading the catalog…"}</div>`; return; }
   if(!list.length){ $("#grid").innerHTML=`<div class="empty" style="grid-column:1/-1">Nothing matches${q?` “${esc(q)}”`:""}. Try another word or choose All.</div>`; return; }
   $("#grid").innerHTML = list.map(m=>{ const p=photoOf(m), n=Number(m.inStock)||0, inCart=cart[m.id]||0;
-    return `<article class="card">${p?`<button class="ph" data-zoom="${esc(m.id)}" aria-label="Enlarge photo of ${esc(m.name)}"><img src="${esc(p)}" alt="${esc(m.name)}" loading="lazy"><span class="zoom">Enlarge</span></button>`:`<div class="ph" style="cursor:default"><span>ASD</span></div>`}
+    const ps=photosOf(m);
+    const phHtml = ps.length>1
+      ? `<div class="ph" data-zoom="${esc(m.id)}" role="button" tabindex="0" aria-label="Photos of ${esc(m.name)}"><div class="strip">${ps.map(u=>`<img src="${esc(u)}" alt="${esc(m.name)}" loading="lazy">`).join("")}</div><span class="count">${ps.length} photos</span><span class="dots">${ps.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</span></div>`
+      : p?`<button class="ph" data-zoom="${esc(m.id)}" aria-label="Enlarge photo of ${esc(m.name)}"><img src="${esc(p)}" alt="${esc(m.name)}" loading="lazy"><span class="zoom">Enlarge</span></button>`:`<div class="ph" style="cursor:default"><span>ASD</span></div>`;
+    return `<article class="card">${phHtml}
     <div class="cb"><div class="cat">${esc(m.category)}</div><div class="nm2">${esc(m.name)}</div><div class="sku">${esc(m.sku)}</div>
     <div class="row"><span class="stock ${stockClass(n)}">${stockText(n)}</span>
     <span class="qty"><input id="q-${esc(m.id)}" type="number" min="1" value="${inCart||1}" aria-label="Quantity"><button class="btn ${inCart?"":"primary"}" data-add="${esc(m.id)}" ${n<=0?"disabled":""}>${inCart?"Update":"Add"}</button></span></div></div></article>`; }).join("");
-  $("#grid").querySelectorAll("[data-zoom]").forEach(b=>b.onclick=()=>{ const m=materials.find(x=>x.id===b.dataset.zoom); if(!m) return;
-    $("#lbImg").src=photoOf(m); $("#lbImg").alt=m.name; $("#lbCap").innerHTML=`${esc(m.name)}<small>${esc(m.sku)}</small>`; $("#lb").hidden=false; });
+  $("#grid").querySelectorAll("[data-zoom]").forEach(b=>{ const m=materials.find(x=>x.id===b.dataset.zoom); if(!m) return;
+    const st=b.querySelector(".strip"); const idx=()=>st?Math.round(st.scrollLeft/Math.max(1,st.clientWidth)):0;
+    if(st) st.addEventListener("scroll",()=>{ const i=idx(); b.querySelectorAll(".dots i").forEach((d,k)=>d.classList.toggle("on",k===i)); },{passive:true});
+    b.onclick=()=>lbOpen(m,idx()); b.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); lbOpen(m,idx()); } }; });
   $("#grid").querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{ const id=b.dataset.add, n=Math.max(1,parseInt($("#q-"+CSS.escape(id)).value,10)||1);
     cart[id]=n; saveCart(); renderCart(); renderGrid(); toast("Added to your request"); });
 }
